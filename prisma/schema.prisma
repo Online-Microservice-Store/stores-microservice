@@ -1,0 +1,73 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SuscriptionType {
+  FREE
+  BASIC
+  MEDIUM
+  PREMIUM
+}
+
+model Store{
+  id String @id @default(uuid())
+  name String
+  description String
+  vision String
+  mision String
+  logo String
+  views String?
+  ubication String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  //Relations
+  StoreTrader StoreTrader[]
+
+}
+
+
+model Suscription{
+  id String @id @default(uuid())
+  name String
+  price Float
+  type SuscriptionType
+  description String
+  features String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  //Relations
+}
+
+model StoreTrader{
+  id String @id @default(uuid())
+  traderId String
+  Store Store @relation(fields: [storeId], references: [id])
+  storeId String
+}
+
+model StoreClient{
+  id String @id @default(uuid())
+  clientId String
+  storeId String
+}
+
+model StoreInvoice{
+  id String @id @default(uuid())
+  invoiceId String
+  storeId String
+}
