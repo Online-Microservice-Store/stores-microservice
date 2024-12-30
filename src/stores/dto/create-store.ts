@@ -25,12 +25,12 @@ export class CreateStoreDto{
     @IsString()
     ubication: string;
 
-    // @IsOptional()
-    // @IsArray()
-    // @ArrayMinSize(1)
-    // @ValidateNested({each: true})
-    // @Type( () => CreateCatalogDto)
-    // catalogs: CreateCatalogDto[]
+    @IsOptional()
+    @IsArray()
+    @ArrayMinSize(1)
+    @ValidateNested({each: true})
+    @Type( () => CreateCatalogDto)
+    catalogs: CreateCatalogDto[]
     
     @IsOptional()
     @IsArray()
