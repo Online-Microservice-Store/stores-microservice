@@ -262,4 +262,24 @@ export class StoresService extends PrismaClient implements OnModuleInit{
           data: data,
         });
     }
+
+    async validateStores(ids: string[]) {
+      ids = Array.from(new Set(ids));
+  
+      const stores = await this.store.findMany({
+        where: {
+          id: {
+            in: ids
+          }
+        }
+      });
+  
+      if ( stores.length !== ids.length ) {
+        throw new RpcException({
+          message: 'Some stores were not found',
+          status: HttpStatus.BAD_REQUEST,
+        });
+      }
+      return stores;
+    }
 }

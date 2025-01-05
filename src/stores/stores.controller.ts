@@ -29,6 +29,11 @@ export class StoresController {
   update(@Payload() updateStoreDto : UpdateStoreDto){
     return this.storesService.update(updateStoreDto.id, updateStoreDto);
   }
+
+  @MessagePattern('validate_stores')
+  validateStores( @Payload() ids: string[] ) {
+    return this.storesService.validateStores(ids);
+  }
   // Aqui van a ir todas las relaciones muchos a muchos de que asocia a la clase store
   // ========================================
   //=============StoreTrader=================
