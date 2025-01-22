@@ -32,10 +32,8 @@ export class CreateStoreDto{
     @Type( () => CreateCatalogDto)
     catalogs: CreateCatalogDto[]
     
-    @IsOptional()
-    @IsArray()
-    @ArrayMinSize(1)
-    @ValidateNested({each: true})
-    @Type( () => CreateStoreTraderDto)
-    storeTraders: CreateStoreTraderDto[]
+
+    @IsString()
+    traderId: string;
+
 }

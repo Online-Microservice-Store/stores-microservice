@@ -1,22 +1,42 @@
-import { HttpStatus, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { CreateStoreClientDto, CreateStoreDto, CreateStoreInvoiceDto, CreateStoreTraderDto, UpdateStoreClientDto, UpdateStoreDto } from './dto';
+import { CreateStoreClientDto, CreateStoreDto, CreateStoreTraderDto, UpdateStoreClientDto, UpdateStoreDto } from './dto';
 import { PaginationDto } from 'src/common';
-import { RpcException } from '@nestjs/microservices';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { UpdateStoreTraderDto } from './dto/update-store-trader.dto';
-import { UpdateStoreInvoiceDto } from './dto/update-store-invoice.dto';
+import { StorePaginationDto } from './dto/store-pagination.dto';
+import { NATS_SERVICE } from 'src/config';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class StoresService extends PrismaClient implements OnModuleInit{
     private readonly logger = new Logger('Store service');
+    constructor(
+      @Inject(NATS_SERVICE) private readonly client : ClientProxy,
+  ){
+      super();
+  }
     async onModuleInit() {
         await this.$connect();
     }
 
-    create(createStoreDto : CreateStoreDto){
-        return this.store.create({
-            data: createStoreDto,
+    async create(createStoreDto : CreateStoreDto){
+        const {traderId, ...rest} = createStoreDto;
+        const store = await this.store.create({
+            data: rest,
         });
+
+        const storeTrader = await this.storeTrader.create({
+          data: {
+            traderId: traderId,
+            storeId: store.id
+          }
+        });
+
+        return {
+          Store: store,
+          StoreTrader: storeTrader
+        }
     }
 
     async findAll(paginationDto: PaginationDto) {
@@ -139,14 +159,57 @@ export class StoresService extends PrismaClient implements OnModuleInit{
         });
     }
 
+    async getStoresByTraderId(storePaginationDto: StorePaginationDto){
+      const { page, limit } = storePaginationDto;
+    
+        const totalPages = await this.storeTrader.count({
+          where: {
+            traderId: storePaginationDto.id
+          }
+        });
+
+        const lastPage = Math.ceil(totalPages / limit);
+    
+        return {
+          data: await this.storeTrader.findMany({
+            where: {
+              traderId: storePaginationDto.id
+            },
+            include: {
+              Store: true,
+            },
+            skip: (page - 1) * limit,
+            take: limit,
+          }),
+          meta: {
+            total: totalPages,
+            page: page,
+            lastPage: lastPage,
+          },
+        };
+    }
+
     // ========================================
     //=============StoreClient=================
     // ========================================
 
     async createStoreClient(createStoreClientDto : CreateStoreClientDto){
-      return this.storeClient.create({
-        data: createStoreClientDto,
+      const storeClient = await this.storeClient.findFirst({
+        where: {
+          storeId: createStoreClientDto.storeId,
+          clientId: createStoreClientDto.clientId
+        }
       });
+      if (!storeClient){
+        return this.storeClient.create({
+          data: createStoreClientDto,
+        });
+      }
+
+      return {
+        message: "He is already register like client"
+      }
+      
     }
 
     async findAllStoreClient(paginationDto: PaginationDto){
@@ -193,75 +256,61 @@ export class StoresService extends PrismaClient implements OnModuleInit{
         return storeClient;
     }
 
-    async updateStoreClient(id: string, updateStoreClientDto : UpdateStoreClientDto){
-      const { id: __, ...data} = updateStoreClientDto;
+    async updateStoreClient(updateStoreClientDto : UpdateStoreClientDto){
+      const { id, ...data} = updateStoreClientDto;
       
       return this.storeClient.update({
         where: {id},
         data: data
       });
     }
+
+    async getClientsByStoreId( storePaginationDto : StorePaginationDto ){
+      const { page, limit } = storePaginationDto;
+    
+        const totalPages = await this.storeClient.count({
+          where: {
+            storeId: storePaginationDto.id
+          }
+        });
+
+        const lastPage = Math.ceil(totalPages / limit);
+        const storeClients = await this.storeClient.findMany({
+          where: {
+            storeId: storePaginationDto.id
+          },
+          include: {
+            Store: true
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+        });
+
+        const clients = await Promise.all(
+          storeClients.map(async (storeClient) => {
+              const response = await firstValueFrom(
+                  this.client.send('auth.find.one.client', {
+                      id: storeClient.clientId,
+                  }),
+              );
+              return response; // Devuelve el resultado para que esté en el array final
+          })
+      );
+
+        return {
+          clients,
+          meta: {
+            total: totalPages,
+            page: page,
+            lastPage: lastPage,
+          },  
+        }
+        
+    }
     // ========================================
     //=============StoreInvoice=================
     // ========================================
 
-    async createStoreInvoice(createStoreInvoiceDto : CreateStoreInvoiceDto){
-      return this.storeInvoice.create({
-        data: createStoreInvoiceDto,
-      });
-    }
-
-    async findAllStoreInvoice(paginationDto: PaginationDto){
-      const { page, limit } = paginationDto;
-    
-      const totalPages = await this.storeInvoice.count();
-      const lastPage = Math.ceil(totalPages / limit);
-    
-      return {
-        data: await this.storeInvoice.findMany({
-          skip: (page - 1) * limit,
-          take: limit,
-        }),
-        meta: {
-          total: totalPages,
-          page: page,
-          lastPage: lastPage,
-        },
-      };
-    }
-
-    async findOneStoreInvoice(id: string){
-      const storeInvoice = await this.storeInvoice.findFirst({
-        where: { id}
-      });
-  
-      if (!storeInvoice) {
-        throw new RpcException({
-          message: `StoreInvoice with id #${id} not found`,
-          status: HttpStatus.BAD_REQUEST,
-        });
-      }
-  
-      return storeInvoice;
-    }
-
-    async deleteStoreInvoice(id: string){
-      await this.findOne(id);
-    
-        const storeInvoice = await this.storeInvoice.delete({
-          where: { id },
-        });
-    
-        return storeInvoice;
-    }
-
-    async updateStoreInvoice(id: string, updateStoreInvoiceDto: UpdateStoreInvoiceDto){
-      const { id: __, ...data } = updateStoreInvoiceDto;
-        return this.storeInvoice.update({
-          where: { id },
-          data: data,
-        });
-    }
 
     async validateStores(ids: string[]) {
       ids = Array.from(new Set(ids));

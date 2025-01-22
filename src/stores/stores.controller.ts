@@ -1,15 +1,15 @@
 import { Controller } from '@nestjs/common';
 import { StoresService } from './stores.service';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { CreateStoreClientDto, CreateStoreDto, CreateStoreInvoiceDto, CreateStoreTraderDto, UpdateStoreClientDto, UpdateStoreDto } from './dto';
+import { CreateStoreClientDto, CreateStoreDto, CreateStoreTraderDto, UpdateStoreClientDto, UpdateStoreDto } from './dto';
 import { PaginationDto } from 'src/common';
 import { UpdateStoreTraderDto } from './dto/update-store-trader.dto';
-import { UpdateStoreInvoiceDto } from './dto/update-store-invoice.dto';
+import { StorePaginationDto } from './dto/store-pagination.dto';
 
 @Controller('stores')
 export class StoresController {
   constructor(private readonly storesService: StoresService) {}
-
+  // STORES
   @MessagePattern('create_store')
   create(@Payload() createStoreDto : CreateStoreDto){
     return this.storesService.create(createStoreDto);
@@ -63,6 +63,12 @@ export class StoresController {
     return this.storesService.updateStoreTrader( updateStoreTraderDto.id, updateStoreTraderDto);
   }
 
+  // Find Stores by traderId
+
+  @MessagePattern('get_stores_by_tarderId')
+  getStoresByTraderId(@Payload() storePaginationDto : StorePaginationDto){
+    return this.storesService.getStoresByTraderId(storePaginationDto);
+  }
   // ========================================
   //=============StoreClient=================
   // ========================================
@@ -84,30 +90,11 @@ export class StoresController {
 
   @MessagePattern('update_store_client')
   updateStoreClient(@Payload() updateStoreClientDto : UpdateStoreClientDto){
-    return this.storesService.updateStoreClient(updateStoreClientDto.id, updateStoreClientDto);
+    return this.storesService.updateStoreClient(updateStoreClientDto);
   }
 
-  // ========================================
-  //=============StoreInvoice=================
-  // ========================================
-
-  @MessagePattern('create_store_invoice')
-  createStoreInvoice(@Payload() createStoreInvoiceDto : CreateStoreInvoiceDto){
-    return this.storesService.createStoreInvoice(createStoreInvoiceDto)
-  }
-
-  @MessagePattern('find_all_store_invoice')
-  findAllStoreInvoice(@Payload() paginationDto : PaginationDto){
-    return this.storesService.findAllStoreInvoice(paginationDto);
-  }
-
-  @MessagePattern('find_one_store_invoice')
-  findOneStoreInvoice(@Payload('id') id: string){
-    return this.storesService.findOneStoreInvoice(id);
-  }
-
-  @MessagePattern('update_store_invoice')
-  updateStoreInvoice(@Payload() updateStoreInvoiceDto : UpdateStoreInvoiceDto){
-    return this.storesService.updateStoreInvoice(updateStoreInvoiceDto.id, updateStoreInvoiceDto);
+  @MessagePattern('get_StoreClient_By_StoreId')
+  getClientsByStoreId(@Payload() storePaginationDto : StorePaginationDto ){
+    return this.storesService.getClientsByStoreId(storePaginationDto)
   }
 }

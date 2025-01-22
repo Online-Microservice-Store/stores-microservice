@@ -36,7 +36,6 @@ model Store{
   //Relations
   StoreTrader StoreTrader[]
   StoreClient StoreClient[]
-  StoreInvoice StoreInvoice[]
 
 }
 
@@ -65,13 +64,6 @@ model StoreTrader{
 model StoreClient{
   id String @id @default(uuid())
   clientId String
-  Store Store? @relation(fields: [storeId], references: [id])
-  storeId String?
-}
-
-model StoreInvoice{
-  id String @id @default(uuid())
-  invoiceId String
   Store Store? @relation(fields: [storeId], references: [id])
   storeId String?
 }
